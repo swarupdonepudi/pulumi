@@ -439,7 +439,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 
 	return res, nil
-}
+}	q	qx
 
 // Refresh compares the current stack’s resource state with the state known to exist in the actual
 // cloud provider. Any such changes are adopted into the current stack.
