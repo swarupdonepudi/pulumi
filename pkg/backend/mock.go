@@ -17,7 +17,9 @@ package backend
 import (
 	"context"
 	"strings"
+	"time"
 
+	"github.com/pulumi/esc"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -357,12 +359,36 @@ func (be *MockBackend) CancelCurrentUpdate(ctx context.Context, stackRef StackRe
 	panic("not implemented")
 }
 
+type MockEnvironmentsBackend struct {
+	MockBackend
+
+	OpenYAMLEnvironmentF func(
+		ctx context.Context,
+		org string,
+		yaml []byte,
+		duration time.Duration,
+	) (*esc.Environment, []apitype.EnvironmentDiagnostic, error)
+}
+
+func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
+	ctx context.Context,
+	org string,
+	yaml []byte,
+	duration time.Duration,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+	if be.OpenYAMLEnvironmentF != nil {
+		return be.OpenYAMLEnvironmentF(ctx, org, yaml, duration)
+	}
+	panic("not implemented")
+}
+
 //
 // Mock stack.
 //
 
 type MockStack struct {
 	RefF      func() StackReference
+	OrgNameF  func() string
 	ConfigF   func() config.Map
 	SnapshotF func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error)
 	TagsF     func() map[apitype.StackTagName]string
@@ -389,6 +415,13 @@ var _ Stack = (*MockStack)(nil)
 func (ms *MockStack) Ref() StackReference {
 	if ms.RefF != nil {
 		return ms.RefF()
+	}
+	panic("not implemented")
+}
+
+func (ms *MockStack) OrgName() string {
+	if ms.OrgNameF != nil {
+		return ms.OrgNameF()
 	}
 	panic("not implemented")
 }
@@ -558,6 +591,67 @@ func (r *MockStackReference) Project() (tokens.Name, bool) {
 func (r *MockStackReference) FullyQualifiedName() tokens.QName {
 	if r.FullyQualifiedNameV != "" {
 		return r.FullyQualifiedNameV
+	}
+	panic("not implemented")
+}
+
+type MockPolicyPack struct {
+	RefF      func() PolicyPackReference
+	BackendF  func() Backend
+	PublishF  func(context.Context, PublishOperation) result.Result
+	EnableF   func(context.Context, string, PolicyPackOperation) error
+	DisableF  func(context.Context, string, PolicyPackOperation) error
+	ValidateF func(context.Context, PolicyPackOperation) error
+	RemoveF   func(context.Context, PolicyPackOperation) error
+}
+
+var _ PolicyPack = (*MockPolicyPack)(nil)
+
+func (mp *MockPolicyPack) Ref() PolicyPackReference {
+	if mp.RefF != nil {
+		return mp.RefF()
+	}
+	panic("not implemented")
+}
+
+func (mp *MockPolicyPack) Backend() Backend {
+	if mp.BackendF != nil {
+		return mp.BackendF()
+	}
+	panic("not implemented")
+}
+
+func (mp *MockPolicyPack) Publish(ctx context.Context, op PublishOperation) result.Result {
+	if mp.PublishF != nil {
+		return mp.PublishF(ctx, op)
+	}
+	panic("not implemented")
+}
+
+func (mp *MockPolicyPack) Enable(ctx context.Context, orgName string, op PolicyPackOperation) error {
+	if mp.EnableF != nil {
+		return mp.EnableF(ctx, orgName, op)
+	}
+	panic("not implemented")
+}
+
+func (mp *MockPolicyPack) Disable(ctx context.Context, orgName string, op PolicyPackOperation) error {
+	if mp.DisableF != nil {
+		return mp.DisableF(ctx, orgName, op)
+	}
+	panic("not implemented")
+}
+
+func (mp *MockPolicyPack) Validate(ctx context.Context, op PolicyPackOperation) error {
+	if mp.ValidateF != nil {
+		return mp.ValidateF(ctx, op)
+	}
+	panic("not implemented")
+}
+
+func (mp *MockPolicyPack) Remove(ctx context.Context, op PolicyPackOperation) error {
+	if mp.RemoveF != nil {
+		return mp.RemoveF(ctx, op)
 	}
 	panic("not implemented")
 }

@@ -141,7 +141,7 @@ func newDestroyCmd() *cobra.Command {
 				}
 
 				err = validateUnsupportedRemoteFlags(false, nil, false, "", jsonDisplay, nil,
-					nil, refresh, showConfig, showReplacementSteps, showSames, false,
+					nil, refresh, showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
 					targetDependents, "", stackConfigFile)
 				if err != nil {
@@ -216,9 +216,19 @@ func newDestroyCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
 			}
+			encrypter, err := sm.Encrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+			}
 
 			stackName := s.Ref().Name().String()
-			configError := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+			configError := workspace.ValidateStackConfigAndApplyProjectConfig(
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
 			if configError != nil {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configError))
 			}

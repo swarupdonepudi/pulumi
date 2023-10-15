@@ -205,13 +205,18 @@ func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (m
 // It decides to return `true` if doing so avoids the need to introduce an `apply` form to
 // accommodate `Output` args (`Promise` args do not count).
 func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bool {
-	if !fn.NeedsOutputVersion() {
+	if fn.ReturnType == nil {
 		// No code emitted for an `fnOutput` form, impossible.
 		return false
 	}
 
 	if b.options.preferOutputVersionedInvokes {
 		return true
+	}
+
+	if fn.Inputs == nil || len(fn.Inputs.Properties) == 0 {
+		// use the output version when there are actual args to use
+		return false
 	}
 
 	outputFormParamType := b.schemaTypeToType(fn.Inputs.InputShape)
@@ -250,8 +255,13 @@ func (b *binder) outputVersionSignature(fn *schema.Function) (model.StaticFuncti
 		return model.StaticFunctionSignature{}, fmt.Errorf("Function %s does not have an Output version", fn.Token)
 	}
 
-	// Given `fn.NeedsOutputVersion()==true`, can assume `fn.Inputs != nil`, `fn.ReturnType != nil`.
-	argsType := b.schemaTypeToType(fn.Inputs.InputShape)
+	// Given `fn.NeedsOutputVersion()==true` `fn.ReturnType != nil`.
+	var argsType model.Type
+	if fn.Inputs != nil {
+		argsType = b.schemaTypeToType(fn.Inputs.InputShape)
+	} else {
+		argsType = model.NewObjectType(map[string]model.Type{})
+	}
 	returnType := b.schemaTypeToType(fn.ReturnType)
 	return b.makeSignature(argsType, model.NewOutputType(returnType)), nil
 }

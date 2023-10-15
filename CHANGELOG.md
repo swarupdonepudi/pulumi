@@ -1,5 +1,101 @@
 # Changelog
 
+## 3.88.1 (2023-10-11)
+
+
+### Bug Fixes
+
+- [cli] allow unmarshalling nil as a config value.
+  [#14149](https://github.com/pulumi/pulumi/pull/14149)
+
+- [auto/nodejs] Remove unneeded SxS check for inline programs
+  [#14154](https://github.com/pulumi/pulumi/pull/14154)
+
+
+### Miscellaneous
+
+- [cli] Pull in fixes from esc v0.5.2
+  [#14155](https://github.com/pulumi/pulumi/pull/14155)
+
+
+## 3.88.0 (2023-10-10)
+
+
+### Features
+
+- [engine] Add the new policy remediations feature.
+  [#14080](https://github.com/pulumi/pulumi/pull/14080)
+
+- [auto] Added a tracing span for plugin launch
+  [#14100](https://github.com/pulumi/pulumi/pull/14100)
+
+### Bug Fixes
+
+- [cli/package] Fix a panic in get-mapping when not passing a provider name.
+  [#14124](https://github.com/pulumi/pulumi/pull/14124)
+
+- [engine] Engine will now error earlier if a deployment needs a bundled plugin that is missing.
+  [#14103](https://github.com/pulumi/pulumi/pull/14103)
+
+- [sdk/{go,nodejs,python}] Fix MockMonitor reporting DeletedWith wasn't supported
+  [#14118](https://github.com/pulumi/pulumi/pull/14118)
+
+- [programgen/python] Fix panic in python program-gen when rewriting index expressions
+  [#14099](https://github.com/pulumi/pulumi/pull/14099)
+
+## 3.87.0 (2023-10-06)
+
+
+### Features
+
+- [cli] Users can now set `PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION` to disable the engine trying to auto install missing plugins.
+  [#14083](https://github.com/pulumi/pulumi/pull/14083)
+
+- [pkg] Upgrade pulumi-java to v0.9.8
+
+- [cli/import] Import converters will write out their intermediate import file for manual fixups if needed.
+  [#14067](https://github.com/pulumi/pulumi/pull/14067)
+
+- [sdkgen/go] Generate output-versioned invokes for functions without inputs
+  [#13694](https://github.com/pulumi/pulumi/pull/13694)
+
+- [sdk/python] Add `default` arg to `Config.get_secret`
+  [#12279](https://github.com/pulumi/pulumi/pull/12279)
+
+
+### Bug Fixes
+
+- [cli] policy publish: default to default-org if possible
+  [#14090](https://github.com/pulumi/pulumi/pull/14090)
+
+- [cli] Fix a panic in `whoami` with tokens missing expected information.
+
+- [engine] Calling RegisterResourceOutputs twice no longer panics and returns an error instead.
+  [#14062](https://github.com/pulumi/pulumi/pull/14062)
+
+- [engine] ComponentResources now emit resourceOutputEvent on Deletion. This fixes the time elapsed timer not ending when the resource is deleted.
+  [#14061](https://github.com/pulumi/pulumi/pull/14061)
+
+- [engine] Lifecycle tests shouldn't reuse a closed plugin host.
+  [#14063](https://github.com/pulumi/pulumi/pull/14063)
+
+- [engine] ctrl-c should cause Pulumi to send cancellation signal to providers
+  [#14057](https://github.com/pulumi/pulumi/pull/14057)
+
+- [engine] Fix a race condition in the engine access step event data.
+  [#14049](https://github.com/pulumi/pulumi/pull/14049)
+
+- [engine] Restore elided asset contents into returned inputs and state from Read operations
+
+- [engine] `DISABLE_AUTOMATIC_PLUGIN_ACQUISITION` is respected for deployment operations now.
+  [#14104](https://github.com/pulumi/pulumi/pull/14104)
+
+- [programgen] `pulumi import` supports resources with duplicate names, it will fail if referenced as a provider/parent due to the ambiguity.
+  [#13989](https://github.com/pulumi/pulumi/pull/13989)
+
+- [programgen/dotnet] Fixes compiling an empty list of expressions from object properties
+  [#14027](https://github.com/pulumi/pulumi/pull/14027)
+
 ## 3.86.0 (2023-09-26)
 
 
@@ -35,9 +131,6 @@
 
 - [engine] Provider mapping information lookups are now more efficient. Providers can also support multiple mappings.
   [#13975](https://github.com/pulumi/pulumi/pull/13975)
-
-- [cli/new] `pulumi policy new` now injects `PULUMI_ACCESS_TOKEN` when necessary to support downloading Premium Policies.
-  [#13898](https://github.com/pulumi/pulumi/pull/13898)
 
 - [sdkgen/python] Generate output-versioned invokes for functions without inputs
   [#13685](https://github.com/pulumi/pulumi/pull/13685)

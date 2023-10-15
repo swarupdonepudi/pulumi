@@ -138,7 +138,7 @@ func newRefreshCmd() *cobra.Command {
 				}
 
 				err = validateUnsupportedRemoteFlags(expectNop, nil, false, "", jsonDisplay, nil,
-					nil, "", showConfig, showReplacementSteps, showSames, false,
+					nil, "", showConfig, false, showReplacementSteps, showSames, false,
 					suppressOutputs, "default", targets, nil, nil,
 					false, "", stackConfigFile)
 				if err != nil {
@@ -183,9 +183,19 @@ func newRefreshCmd() *cobra.Command {
 			if err != nil {
 				return result.FromError(fmt.Errorf("getting stack decrypter: %w", err))
 			}
+			encrypter, err := sm.Encrypter()
+			if err != nil {
+				return result.FromError(fmt.Errorf("getting stack encrypter: %w", err))
+			}
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(stackName, proj, cfg.Config, decrypter)
+			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				stackName,
+				proj,
+				cfg.Environment,
+				cfg.Config,
+				encrypter,
+				decrypter)
 			if configErr != nil {
 				return result.FromError(fmt.Errorf("validating stack config: %w", configErr))
 			}

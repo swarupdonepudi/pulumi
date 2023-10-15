@@ -15,12 +15,13 @@
 package engine
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -29,7 +30,7 @@ func Destroy(
 	ctx *Context,
 	opts UpdateOptions,
 	dryRun bool,
-) (*deploy.Plan, display.ResourceChanges, result.Result) {
+) (*deploy.Plan, display.ResourceChanges, error) {
 	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
@@ -37,13 +38,13 @@ func Destroy(
 
 	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 	defer emitter.Close()
 
@@ -51,10 +52,10 @@ func Destroy(
 	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
 
 	if err := checkTargets(opts.Targets, u.GetTarget().Snapshot); err != nil {
-		return nil, nil, result.FromError(err)
+		return nil, nil, err
 	}
 
-	return update(ctx, info, deploymentOptions{
+	return update(ctx, info, &deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,
 		Events:        emitter,
@@ -64,7 +65,8 @@ func Destroy(
 }
 
 func newDestroySource(
-	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
+	ctx context.Context,
+	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool,
 ) (deploy.Source, error) {
 	// Like Update, we need to gather the set of plugins necessary to delete everything in the snapshot.
@@ -77,7 +79,7 @@ func newDestroySource(
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
 
-	if err := ensurePluginsAreInstalled(plugctx.Request(), plugctx.Diag, plugins.Deduplicate(),
+	if err := ensurePluginsAreInstalled(ctx, plugctx.Diag, plugins.Deduplicate(),
 		plugctx.Host.GetProjectPlugins()); err != nil {
 		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
 	}

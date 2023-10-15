@@ -109,6 +109,8 @@ func (host *testPluginHost) GetRequiredPlugins(info plugin.ProgInfo,
 }
 
 type testProvider struct {
+	plugin.UnimplementedProvider
+
 	pkg         tokens.Package
 	version     semver.Version
 	configured  bool
@@ -116,14 +118,6 @@ type testProvider struct {
 		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
 	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
 	config     func(resource.PropertyMap) error
-}
-
-func (prov *testProvider) SignalCancellation() error {
-	return nil
-}
-
-func (prov *testProvider) Close() error {
-	return nil
 }
 
 func (prov *testProvider) Pkg() tokens.Package {
@@ -152,68 +146,6 @@ func (prov *testProvider) Configure(inputs resource.PropertyMap) error {
 	}
 	prov.configured = true
 	return nil
-}
-
-func (prov *testProvider) Check(urn resource.URN,
-	olds, news resource.PropertyMap, _ bool, _ []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return nil, nil, errors.New("unsupported")
-}
-
-func (prov *testProvider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
-	preview bool,
-) (resource.ID, resource.PropertyMap, resource.Status, error) {
-	return "", nil, resource.StatusOK, errors.New("unsupported")
-}
-
-func (prov *testProvider) Read(urn resource.URN, id resource.ID,
-	inputs, state resource.PropertyMap,
-) (plugin.ReadResult, resource.Status, error) {
-	return plugin.ReadResult{}, resource.StatusUnknown, errors.New("unsupported")
-}
-
-func (prov *testProvider) Diff(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap, _ bool, _ []string,
-) (plugin.DiffResult, error) {
-	return plugin.DiffResult{}, errors.New("unsupported")
-}
-
-func (prov *testProvider) Update(urn resource.URN, id resource.ID,
-	oldInputs, oldOutputs, newInputs resource.PropertyMap, timeout float64,
-	ignoreChanges []string, preview bool,
-) (resource.PropertyMap, resource.Status, error) {
-	return nil, resource.StatusOK, errors.New("unsupported")
-}
-
-func (prov *testProvider) Delete(urn resource.URN,
-	id resource.ID, props resource.PropertyMap, timeout float64,
-) (resource.Status, error) {
-	return resource.StatusOK, errors.New("unsupported")
-}
-
-func (prov *testProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions,
-) (plugin.ConstructResult, error) {
-	return plugin.ConstructResult{}, errors.New("unsupported")
-}
-
-func (prov *testProvider) Invoke(tok tokens.ModuleMember,
-	args resource.PropertyMap,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	return nil, nil, errors.New("unsupported")
-}
-
-func (prov *testProvider) StreamInvoke(
-	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error,
-) ([]plugin.CheckFailure, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-func (prov *testProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions,
-) (plugin.CallResult, error) {
-	return plugin.CallResult{}, errors.New("unsupported")
 }
 
 func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
@@ -446,7 +378,7 @@ func TestCRUD(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p.(*testProvider).configured)
 
@@ -454,6 +386,7 @@ func TestCRUD(t *testing.T) {
 		id, outs, status, err := r.Create(urn, inputs, timeout, false)
 		assert.NoError(t, err)
 		assert.NotEqual(t, "", id)
+		assert.NotEqual(t, UnconfiguredID, id)
 		assert.NotEqual(t, UnknownID, id)
 		assert.Equal(t, resource.PropertyMap{}, outs)
 		assert.Equal(t, resource.StatusOK, status)
@@ -481,7 +414,7 @@ func TestCRUD(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)
@@ -518,7 +451,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Delete
-		status, err := r.Delete(urn, id, resource.PropertyMap{}, timeout)
+		status, err := r.Delete(urn, id, resource.PropertyMap{}, resource.PropertyMap{}, timeout)
 		assert.NoError(t, err)
 		assert.Equal(t, resource.StatusOK, status)
 
@@ -599,7 +532,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// The provider should not be configured: configuration will occur during the previewed Create.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p.(*testProvider).configured)
 	}
@@ -620,7 +553,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// The provider should remain unconfigured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)
@@ -653,7 +586,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Empty(t, failures)
 
 		// The provider should remain unconfigured.
-		p, ok := r.GetProvider(Reference{urn: urn, id: UnknownID})
+		p, ok := r.GetProvider(Reference{urn: urn, id: UnconfiguredID})
 		assert.True(t, ok)
 		assert.False(t, p == old)
 		assert.False(t, p.(*testProvider).configured)
@@ -780,9 +713,8 @@ func TestCRUDBadVersion(t *testing.T) {
 	assert.Nil(t, inputs)
 }
 
+//nolint:paralleltest
 func TestLoadProvider_missingError(t *testing.T) {
-	t.Parallel()
-
 	var count int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count++
@@ -798,14 +730,29 @@ func TestLoadProvider_missingError(t *testing.T) {
 		})
 	host := newPluginHost(t, []*providerLoader{loader})
 
-	_, err := loadProvider(
-		"myplugin", &version, srv.URL,
-		nil, host, nil /* builtins */)
-	assert.ErrorContains(t, err,
-		"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
-	assert.ErrorContains(t, err,
-		fmt.Sprintf("install the plugin using `pulumi plugin install resource myplugin v1.2.3 --server %s`", srv.URL))
-	assert.Equal(t, 5, count)
+	t.Run("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true", func(t *testing.T) {
+		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+
+		_, err := loadProvider(
+			"myplugin", &version, srv.URL,
+			nil, host, nil /* builtins */)
+		assert.ErrorContains(t, err,
+			"no resource plugin 'pulumi-resource-myplugin' found in the workspace at version v1.2.3")
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false", func(t *testing.T) {
+		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+
+		_, err := loadProvider(
+			"myplugin", &version, srv.URL,
+			nil, host, nil /* builtins */)
+		assert.ErrorContains(t, err,
+			"Could not automatically download and install resource plugin 'pulumi-resource-myplugin' at version v1.2.3")
+		assert.ErrorContains(t, err,
+			fmt.Sprintf("install the plugin using `pulumi plugin install resource myplugin v1.2.3 --server %s`", srv.URL))
+		assert.Equal(t, 5, count)
+	})
 }
 
 func TestConcurrentRegistryUsage(t *testing.T) {
